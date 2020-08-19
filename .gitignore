@@ -31,3 +31,4 @@ tests/util/.requests_cache.jsonl
 
 # Config files
 .config/
+.vscode/settings.json
