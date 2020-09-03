@@ -53,7 +53,6 @@ class SearchFilter(Enum):
 
 
 DEFAULT_FILTER = SearchFilter.TOP
-DEFAULT_LANG = "en"
 
 
 class Search(Request):
@@ -64,9 +63,10 @@ class Search(Request):
         since: Optional[date] = None,
         until: Optional[date] = None,
         filter_: SearchFilter = DEFAULT_FILTER,
-        lang: str = DEFAULT_LANG,
+        lang: Optional[str] = None,
         max_tweets: Optional[int] = DEFAULT_MAX_TWEETS,
         batch_size: int = DEFAULT_BATCH_SIZE,
+        meta: Optional[Mapping[str, str]] = None,
     ):
         """Construct a new query.
 
@@ -94,6 +94,10 @@ class Search(Request):
         self.since: Final = since
         self.until: Final = until
         self.filter: Final = filter_
+        self.meta: Final = meta
+
+        if lang == "":
+            lang = None
         self.lang: Final = lang
 
     @overrides
@@ -107,7 +111,10 @@ class Search(Request):
         if self.until:
             obj["until"] = self.until.isoformat()
         obj["filter"] = self.filter.to_json()
-        obj["lang"] = self.lang
+        if self.lang:
+            obj["lang"] = self.lang
+        if self.meta:
+            obj["meta"] = self.meta
         obj.update(super().to_json())
         return obj
 
@@ -128,7 +135,7 @@ class Search(Request):
                 else None
             ),
             filter_=SearchFilter.from_json(cast(str, obj["filter"])),
-            lang=checked_cast(str, obj["lang"]),
+            lang=(cast(Optional[str], obj["lang"]) if "lang" in obj else None),
             max_tweets=(
                 cast(Optional[int], obj["max_tweets"])
                 if "max_tweets" in obj
@@ -139,6 +146,7 @@ class Search(Request):
                 if "batch_size" in obj
                 else DEFAULT_BATCH_SIZE
             ),
+            meta=(cast(Mapping[str, str], obj["meta"]) if "meta" in obj else None),
         )
 
     @overrides
@@ -162,6 +170,7 @@ class Search(Request):
                 lang=self.lang,
                 max_tweets=self.max_tweets,
                 batch_size=self.batch_size,
+                meta=self.meta,
             )
             for date_ in daterange(self.since, self.until - timedelta(days=1))
         ]

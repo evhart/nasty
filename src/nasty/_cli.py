@@ -46,7 +46,7 @@ from nasty.tweet.tweet import Tweet, TweetId
 
 
 _REQUEST_ARGUMENT_GROUP = ArgumentGroup(
-    name="Request Arguments", description="Control how Tweets are requested.",
+    name="Request Arguments", description="Control how Tweets are requested."
 )
 _BATCH_ARGUMENT_GROUP = ArgumentGroup(
     name="Batch Arguments",
@@ -173,12 +173,12 @@ class SearchProgram(RequestProgram):
         group=_SEARCH_ARGUMENT_GROUP,
     )
 
-    lang: str = Argument(
-        "en",
+    lang: Optional[str] = Argument(
+        None,
         short_alias="l",
         description=(
             "Language for Tweets, presumably as ISO 3166-1 two or three letter codes. "
-            "Defaults to 'en'."
+            "Defaults to  any language (None)."
         ),
         group=_SEARCH_ARGUMENT_GROUP,
     )
@@ -288,7 +288,7 @@ class ThreadProgram(RequestProgram):
 
 
 _BATCH_ARGUMENT_GROUP = ArgumentGroup(
-    name="Batch Arguments", description="Execute previously created batch of requests.",
+    name="Batch Arguments", description="Execute previously created batch of requests."
 )
 
 
@@ -436,8 +436,7 @@ class UnidifyProgram(Program):
         if self.in_dir:
             batch_results = BatchResults(self.in_dir)
             batch_results.unidify(
-                self.settings.twitter_api,
-                self.out_dir if self.out_dir else self.in_dir,
+                self.settings.twitter_api, self.out_dir if self.out_dir else self.in_dir
             )
         else:
             for tweet in statuses_lookup(

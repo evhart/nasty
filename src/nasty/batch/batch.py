@@ -14,6 +14,8 @@
 # limitations under the License.
 #
 
+import hashlib
+import json
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
@@ -32,6 +34,8 @@ from .._util.json_ import (
     write_jsonl_lines,
 )
 from ..request.request import Request
+from ..storage.file import FileStorage
+from ..storage.storage import Storage
 from ._execute_result import _ExecuteResult
 from .batch_entry import BatchEntry
 from .batch_results import BatchResults
@@ -44,32 +48,39 @@ class Batch:
         self._entries: List[BatchEntry] = []
 
     def append(self, request: Request) -> None:
+        id_ = hashlib.md5(json.dumps(request.to_json()).encode("utf-8")).hexdigest()
         self._entries.append(
-            BatchEntry(request, id_=uuid4().hex, completed_at=None, exception=None)
+            BatchEntry(request, id_=id_, completed_at=None, exception=None)
         )
 
     def dump(self, file: Path) -> None:
         logger.debug("Dumping batch to file '{}'.".format(file))
-        write_jsonl_lines(file, self._entries, overwrite_existing=True)
+        write_jsonl_lines(
+            file, self._entries, overwrite_existing=True
+        )  # TODO Dump to storage
 
     def load(self, file: Path) -> None:
         logger.debug("Loading batch from file '{}'.".format(file))
-        self._entries += read_json_lines(file, BatchEntry)
+        self._entries += read_json_lines(file, BatchEntry)  # TODO Read from storage
 
-    def execute(self, results_dir: Optional[Path] = None) -> Optional[BatchResults]:
+    def execute(
+        self, storage: Optional[Union[Path, Storage]] = None
+    ) -> Optional[BatchResults]:
         logger.debug(
             "Started executing batch of {:d} requests.".format(len(self._entries))
         )
 
-        if not results_dir:
-            results_dir = Path(mkdtemp())
-        logger.debug("  Saving results to '{}'.".format(results_dir))
-        Path.mkdir(results_dir, exist_ok=True, parents=True)
+        if not storage:
+            storage = FileStorage()
+        if isinstance(storage, Path) or isinstance(storage, str):
+            if isinstance(storage, str):
+                storage = Path(storage)
+            storage = FileStorage(path=storage)
 
         num_workers = int(getenv("NASTY_NUM_WORKERS", default="1"))
         with ThreadPoolExecutor(max_workers=num_workers) as pool:
             futures = (
-                pool.submit(self._execute_entry, entry, results_dir)
+                pool.submit(self._execute_entry, entry, storage)
                 for entry in self._entries
             )
             result_counter = Counter(
@@ -87,39 +98,37 @@ class Batch:
         if result_counter[_ExecuteResult.FAIL]:
             logger.error("Some requests failed!")
             return None
-        return BatchResults(results_dir)
+        return BatchResults(storage)
 
     @classmethod
-    def _execute_entry(cls, entry: BatchEntry, results_dir: Path) -> _ExecuteResult:
+    def _execute_entry(cls, entry: BatchEntry, storage: Storage) -> _ExecuteResult:
         logger.debug("Executing request: {}".format(entry.request.to_json()))
 
-        meta_file = results_dir / entry.meta_file_name
-        data_file = results_dir / entry.data_file_name
-
-        if meta_file.exists():
-            prev_execution_entry = read_json(meta_file, BatchEntry)
-
-            if data_file.exists():
-                logger.debug("  Skipping request, because files already exist.")
+        if storage.entry_exists(entry):
+            prev_execution_entry = storage.read_entry(entry)
+            if prev_execution_entry:
                 entry.completed_at = prev_execution_entry.completed_at
-                return _ExecuteResult.SKIP
 
-            logger.debug(
-                "  Retrying request that has stray files from previous "
-                "execution: {}".format(prev_execution_entry.exception)
-            )
-            meta_file.unlink()
+            if entry.completed_at:
+                logger.debug(
+                    "  Skipping request, because files already exist and entry completed."
+                )
+                return _ExecuteResult.SKIP
+            else:
+                logger.debug("  Executing request, because entry is not completed.")
 
         result = _ExecuteResult.SUCCESS
         try:
-            write_jsonl_lines(data_file, entry.request.request(), use_lzma=True)
+            tweet_stream = entry.request.request()
+            storage.write_data(entry, tweet_stream)
             entry.completed_at = datetime.now()
+
         except Exception as e:
             logger.exception("  Request execution failed with exception.")
             entry.exception = JsonSerializedException.from_exception(e)
             result = _ExecuteResult.FAIL
 
-        write_json(meta_file, entry)
+        storage.write_entry(entry)
         return result
 
     def __len__(self) -> int:

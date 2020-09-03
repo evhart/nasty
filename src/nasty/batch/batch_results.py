@@ -33,6 +33,8 @@ from typing import (
 from more_itertools import groupby_transform, spy, unzip
 
 from nasty._settings import TwitterApiSettings
+from nasty.storage.storage import Storage
+from nasty.storage.file import FileStorage
 
 from .._util.io_ import read_lines_file, write_lines_file
 from .._util.json_ import read_json, read_json_lines, write_json, write_jsonl_lines
@@ -43,37 +45,30 @@ from .batch_entry import BatchEntry
 
 logger = getLogger(__name__)
 
-
+# TODO Implement storage for BatchResults
 class BatchResults(Sequence[BatchEntry]):
-    def __init__(self, results_dir: Path):
-        self._results_dir = results_dir
-        self._entries: Sequence[BatchEntry] = [
-            read_json(meta_file, BatchEntry)
-            for meta_file in self._results_dir.iterdir()
-            if meta_file.name.endswith(".meta.json")
-        ]
+    def __init__(self, results_storage: Optional[Union[Path, Storage]]):
+
+        if not results_storage:
+            results_storage = FileStorage()
+        elif isinstance(results_storage, Path) or isinstance(results_storage, str):
+            if isinstance(results_storage, str):
+                results_storage = Path(results_storage)
+            results_storage = FileStorage(path=results_storage)
+
+        self._results_storage = results_storage
+        self._entries = self._results_storage.entries()
 
     def tweets(self, entry: BatchEntry) -> Iterable[Tweet]:
-        data_file = self._results_dir / entry.data_file_name
-        ids_file = self._results_dir / entry.ids_file_name
-        if not data_file.exists() and ids_file.exists():
-            raise ValueError("Tweet data not available. Did you forget to unidify?")
-
-        yield from read_json_lines(data_file, Tweet, use_lzma=True)
+        return self._results_storage.read_data(entry)
 
     def tweet_ids(self, entry: BatchEntry) -> Iterable[TweetId]:
-        data_file = self._results_dir / entry.data_file_name
-        ids_file = self._results_dir / entry.ids_file_name
-        if ids_file.exists():
-            yield from read_lines_file(ids_file)
-        else:
-            yield from (
-                tweet.id for tweet in read_json_lines(data_file, Tweet, use_lzma=True)
-            )
+        return self._results_storage.read_data_ids(entry)
 
+    # TODO Update with storage API
     def _transform(
         self,
-        new_results_dir: Optional[Path],
+        new_results_storage: Optional[Path],
         transform_name: str,
         transform_func: Callable[..., Counter[_ExecuteResult]],
         **transform_kwargs: object,
@@ -110,9 +105,11 @@ class BatchResults(Sequence[BatchEntry]):
             return BatchResults(results_dir)
         return self
 
+    # TODO Update with storage API
     def idify(self, new_results_dir: Optional[Path] = None) -> Optional["BatchResults"]:
         return self._transform(new_results_dir, "Idifying", self._transform_idify)
 
+    # TODO Update with storage API
     def _transform_idify(self, results_dir: Path) -> Counter[_ExecuteResult]:
         result_counter = Counter[_ExecuteResult]()
         for entry in self:
@@ -132,6 +129,7 @@ class BatchResults(Sequence[BatchEntry]):
                 result_counter[_ExecuteResult.FAIL] += 1
         return result_counter
 
+    # TODO Update with storage API
     def unidify(
         self,
         twitter_api_settings: TwitterApiSettings,
@@ -144,8 +142,9 @@ class BatchResults(Sequence[BatchEntry]):
             twitter_api_settings=twitter_api_settings,
         )
 
+    # TODO Update with storage API
     def _transform_unidify(
-        self, results_dir: Path, twitter_api_settings: TwitterApiSettings,
+        self, results_dir: Path, twitter_api_settings: TwitterApiSettings
     ) -> Counter[_ExecuteResult]:
         result_counter = Counter[_ExecuteResult]()
 
@@ -175,6 +174,7 @@ class BatchResults(Sequence[BatchEntry]):
 
         return result_counter
 
+    # TODO Update with storage API
     def _iter_entries_tweet_ids(
         self, results_dir: Path, result_counter: Counter[_ExecuteResult]
     ) -> Iterable[Tuple[BatchEntry, TweetId]]:

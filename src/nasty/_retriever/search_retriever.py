@@ -194,15 +194,20 @@ class SearchRetriever(Retriever[Search]):
 
     @overrides
     def _timeline_url(self) -> Mapping[str, object]:
-        return {
+
+        query = {
             "url": "https://mobile.twitter.com/search",
             "params": {
-                "lang": self._request.lang,
                 "q": self._q_url_param(),
                 "src": "typed_query",
                 "f": self._f_url_param(),
             },
         }
+
+        if self._request.lang:
+            query["params"]["lang"] = self._request.lang
+
+        return query
 
     @overrides
     def _batch_url(self) -> Mapping[str, object]:
@@ -254,7 +259,10 @@ class SearchRetriever(Retriever[Search]):
             result += " since:" + self._request.since.isoformat()
         if self._request.until:
             result += " until:" + self._request.until.isoformat()
-        result += " lang:" + self._request.lang
+
+        if self._request.lang:
+            result += " lang:" + self._request.lang
+
         return result
 
     def _f_url_param(self) -> Optional[str]:
