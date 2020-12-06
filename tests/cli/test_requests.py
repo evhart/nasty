@@ -29,7 +29,7 @@ from nasty import main
 from nasty.batch.batch import Batch
 from nasty.request.replies import Replies
 from nasty.request.request import DEFAULT_BATCH_SIZE, DEFAULT_MAX_TWEETS, Request
-from nasty.request.search import DEFAULT_FILTER, DEFAULT_LANG, Search, SearchFilter
+from nasty.request.search import DEFAULT_FILTER, Search, SearchFilter
 from nasty.request.thread import Thread
 
 from .mock_context import MockRequestContext
@@ -75,7 +75,7 @@ def _make_args(  # noqa: C901
             args += ["--until", request.until.strftime("%Y-%m-%d")]
         if request.filter != DEFAULT_FILTER:
             args += ["--filter", request.filter.name]
-        if request.lang != DEFAULT_LANG:
+        if request.lang != None:
             args += ["--lang", request.lang]
 
     elif isinstance(request, Replies):

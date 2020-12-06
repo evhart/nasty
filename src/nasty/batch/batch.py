@@ -22,17 +22,9 @@ from datetime import datetime
 from logging import getLogger
 from os import getenv
 from pathlib import Path
-from tempfile import mkdtemp
 from typing import Iterator, List, Optional, Sequence, Union, overload
-from uuid import uuid4
 
-from .._util.json_ import (
-    JsonSerializedException,
-    read_json,
-    read_json_lines,
-    write_json,
-    write_jsonl_lines,
-)
+from .._util.json_ import JsonSerializedException, read_json_lines, write_jsonl_lines
 from ..request.request import Request
 from ..storage.file import FileStorage
 from ..storage.storage import Storage
@@ -110,9 +102,7 @@ class Batch:
                 entry.completed_at = prev_execution_entry.completed_at
 
             if entry.completed_at:
-                logger.debug(
-                    "  Skipping request, because files already exist and entry completed."
-                )
+                logger.debug("  Skipping request, because files entry completed.")
                 return _ExecuteResult.SKIP
             else:
                 logger.debug("  Executing request, because entry is not completed.")
