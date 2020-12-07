@@ -144,7 +144,9 @@ class BatchResults(Sequence[BatchEntry]):
 
     # TODO Update with storage API
     def _transform_unidify(
-        self, results_dir: Path, twitter_api_settings: TwitterApiSettings
+        self,
+        results_dir: Path,
+        twitter_api_settings: TwitterApiSettings,
     ) -> Counter[_ExecuteResult]:
         result_counter = Counter[_ExecuteResult]()
 

@@ -46,7 +46,8 @@ from nasty.tweet.tweet import Tweet, TweetId
 
 
 _REQUEST_ARGUMENT_GROUP = ArgumentGroup(
-    name="Request Arguments", description="Control how Tweets are requested."
+    name="Request Arguments",
+    description="Control how Tweets are requested.",
 )
 _BATCH_ARGUMENT_GROUP = ArgumentGroup(
     name="Batch Arguments",
@@ -167,8 +168,8 @@ class SearchProgram(RequestProgram):
         alias="filter",
         short_alias="f",
         description=(
-            "Sorting/filtering of Tweets (top, latest, photos, videos). Defaults "
-            "to 'top'."
+            "Sorting/filtering of Tweets (TOP, LATEST, PHOTOS, VIDEOS). Defaults "
+            "to 'TOP'."
         ),
         group=_SEARCH_ARGUMENT_GROUP,
     )
@@ -288,7 +289,8 @@ class ThreadProgram(RequestProgram):
 
 
 _BATCH_ARGUMENT_GROUP = ArgumentGroup(
-    name="Batch Arguments", description="Execute previously created batch of requests."
+    name="Batch Arguments",
+    description="Execute previously created batch of requests.",
 )
 
 

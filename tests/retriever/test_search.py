@@ -89,7 +89,11 @@ def test_query_word_or(args: Tuple[str, str]) -> None:
 @pytest.mark.parametrize("args", TEST_QUERY_KEYWORDS, ids=repr)
 def test_query_word_not(args: Tuple[str, str]) -> None:
     word1, word2 = args
-    tweets = list(Search("{} -{}".format(word1, word2), max_tweets=50).request())
+    tweets = list(
+        Search(
+            "{} -{}".format(word1, word2), max_tweets=50, filter_=SearchFilter.LATEST
+        ).request()
+    )
     assert 50 == len(tweets)
     for tweet in tweets:
         all_tweet_text = json.dumps(tweet.to_json()).lower()
@@ -109,7 +113,7 @@ def test_query_word_not(args: Tuple[str, str]) -> None:
     "phrase", ["donald trump", "hillary clinton", "barack obama"], ids=repr
 )
 def test_query_word_phrase(phrase: str) -> None:
-    tweets = list(Search(phrase, max_tweets=50).request())
+    tweets = list(Search(phrase, max_tweets=50, filter_=SearchFilter.LATEST).request())
     assert 50 == len(tweets)
     for tweet in tweets:
         all_tweet_text = json.dumps(tweet.to_json()).lower()
@@ -128,7 +132,9 @@ TEST_QUERY_USERS = ["realDonaldTrump", "HillaryClinton", "BarackObama"]
 
 @pytest.mark.parametrize("user", TEST_QUERY_USERS, ids=repr)
 def test_query_user_from(user: str) -> None:
-    tweets = list(Search("from:@" + user, max_tweets=50).request())
+    tweets = list(
+        Search("from:@" + user, max_tweets=50, filter_=SearchFilter.LATEST).request()
+    )
     assert 0 < len(tweets) <= 50
     for tweet in tweets:
         assert user.lower() == tweet.user.screen_name.lower()
@@ -136,7 +142,9 @@ def test_query_user_from(user: str) -> None:
 
 @pytest.mark.parametrize("user", TEST_QUERY_USERS, ids=repr)
 def test_query_user_to(user: str) -> None:
-    tweets = list(Search("to:@" + user, max_tweets=50).request())
+    tweets = list(
+        Search("to:@" + user, max_tweets=50, filter_=SearchFilter.LATEST).request()
+    )
     assert 50 == len(tweets)
     for tweet in tweets:
         if not tweet.text.lower().count("@" + user.lower()):
@@ -239,17 +247,33 @@ def test_filter_videos() -> None:
 
 
 def test_lang_en() -> None:
-    assert 50 == len(list(Search("trump", lang="en", max_tweets=50).request()))
+    assert 50 == len(
+        list(
+            Search(
+                "trump", lang="en", max_tweets=50, filter_=SearchFilter.LATEST
+            ).request()
+        )
+    )
     # No robust way to verify language.
 
 
 def test_lang_de() -> None:
-    assert 50 == len(list(Search("trump", lang="de", max_tweets=50).request()))
+    assert 50 == len(
+        list(
+            Search(
+                "trump", lang="de", max_tweets=50, filter_=SearchFilter.LATEST
+            ).request()
+        )
+    )
     # No robust way to verify language.
 
 
 def test_lang_invalid() -> None:
-    assert not list(Search("trump", lang="INVALID", max_tweets=50).request())
+    assert not list(
+        Search(
+            "trump", lang="INVALID", max_tweets=50, filter_=SearchFilter.LATEST
+        ).request()
+    )
 
 
 # -- test_special_msg_* ----------------------------------------------------------------
